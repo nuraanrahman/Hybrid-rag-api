@@ -4,7 +4,7 @@ A RAG API I built that combines keyword search and vector search together, with 
 
 ## Live Demo
 
-> **[https://hybrid-rag-api-l3vd.onrender.com](https://hybrid-rag-api-l3vd.onrender.com)**
+> **[https://hybrid-rag-3c9r.onrender.com](https://hybrid-rag-3c9r.onrender.com)**
 
 ---
 
