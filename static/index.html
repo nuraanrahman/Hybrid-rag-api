@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RAG API — M2 Week 1</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+
+    h1 { font-size: 1.5rem; margin-bottom: 8px; color: #a78bfa; }
+    .subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+    .tab {
+      padding: 8px 20px; border-radius: 8px; cursor: pointer;
+      border: 1px solid #1e293b; background: #1e293b;
+      color: #94a3b8; font-size: 0.9rem; transition: all 0.15s;
+    }
+    .tab.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+
+    /* ── Card ── */
+    .card {
+      width: 100%; max-width: 680px;
+      background: #1e293b; border-radius: 12px;
+      padding: 28px; display: none; flex-direction: column; gap: 16px;
+    }
+    .card.active { display: flex; }
+
+    label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px; display: block; }
+
+    input, textarea, select {
+      width: 100%; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #334155; background: #0f1117;
+      color: #e2e8f0; font-size: 0.9rem; font-family: inherit;
+      outline: none; transition: border 0.15s;
+    }
+    input:focus, textarea:focus { border-color: #7c3aed; }
+    textarea { resize: vertical; min-height: 140px; }
+
+    button {
+      padding: 10px 20px; border-radius: 8px; border: none;
+      background: #7c3aed; color: #fff; font-size: 0.9rem;
+      cursor: pointer; transition: background 0.15s; align-self: flex-start;
+    }
+    button:hover { background: #6d28d9; }
+    button:disabled { background: #334155; cursor: not-allowed; }
+
+    /* ── Status bar ── */
+    .status {
+      font-size: 0.82rem; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #334155; display: none;
+    }
+    .status.ok   { border-color: #059669; color: #34d399; background: #022c22; display: block; }
+    .status.err  { border-color: #dc2626; color: #f87171; background: #2c0a0a; display: block; }
+    .status.info { border-color: #0369a1; color: #7dd3fc; background: #0c1a2e; display: block; }
+
+    /* ── Answer box ── */
+    .answer-box {
+      background: #0f1117; border: 1px solid #334155;
+      border-radius: 8px; padding: 16px; display: none;
+    }
+    .answer-box.active { display: block; }
+    .answer-text { line-height: 1.7; white-space: pre-wrap; font-size: 0.9rem; }
+    .sources-title { margin-top: 16px; font-size: 0.78rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .source-item {
+      margin-top: 8px; padding: 10px 12px; border-radius: 6px;
+      background: #1e293b; border: 1px solid #334155; font-size: 0.82rem;
+    }
+    .source-file { color: #a78bfa; font-weight: 600; }
+    .source-header { color: #64748b; font-size: 0.75rem; margin-top: 2px; }
+    .source-preview { color: #94a3b8; margin-top: 6px; font-size: 0.8rem; line-height: 1.5; }
+
+    /* ── Auth bar ── */
+    .auth-bar {
+      width: 100%; max-width: 680px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; padding: 10px 16px;
+      background: #1e293b; border-radius: 8px; font-size: 0.82rem;
+    }
+    .auth-bar span { color: #64748b; }
+    .auth-bar strong { color: #a78bfa; }
+    .logout-btn {
+      padding: 4px 12px; font-size: 0.78rem; background: #334155;
+    }
+  </style>
+</head>
+<body>
+
+<h1>RAG API</h1>
+<p class="subtitle">Ingest documents · Search · Ask questions</p>
+
+<!-- Auth bar (shown when logged in) -->
+<div class="auth-bar" id="authBar" style="display:none">
+  <span>Logged in as <strong id="authUser"></strong></span>
+  <button class="logout-btn" onclick="logout()">Log out</button>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('login')">Login</div>
+  <div class="tab" onclick="switchTab('ingest')">Ingest</div>
+  <div class="tab" onclick="switchTab('ask')">Ask</div>
+  <div class="tab" onclick="switchTab('search')">Search</div>
+</div>
+
+<!-- ── Login card ── -->
+<div class="card active" id="tab-login">
+  <div>
+    <label>Username</label>
+    <input id="loginUser" placeholder="your_username" />
+  </div>
+  <div>
+    <label>Password</label>
+    <input id="loginPass" type="password" placeholder="••••••••" />
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="login()">Log in</button>
+    <button onclick="register()" style="background:#334155">Register</button>
+  </div>
+  <div class="status" id="loginStatus"></div>
+</div>
+
+<!-- ── Ingest card ── -->
+<div class="card" id="tab-ingest">
+  <div>
+    <label>Source name (e.g. "fastapi_docs.txt")</label>
+    <input id="ingestSource" placeholder="my_document.txt" />
+  </div>
+  <div>
+    <label>Paste document text here</label>
+    <textarea id="ingestText" placeholder="Paste any text — articles, notes, docs..."></textarea>
+  </div>
+  <button onclick="ingest()" id="ingestBtn">Ingest document</button>
+  <div class="status" id="ingestStatus"></div>
+</div>
+
+<!-- ── Ask card ── -->
+<div class="card" id="tab-ask">
+  <div>
+    <label>Ask a question about your documents</label>
+    <input id="askQuestion" placeholder="What is retrieval-augmented generation?" onkeydown="if(event.key==='Enter') ask()" />
+  </div>
+  <button onclick="ask()" id="askBtn">Ask</button>
+  <div class="status" id="askStatus"></div>
+  <div class="answer-box" id="answerBox">
+    <div class="answer-text" id="answerText"></div>
+    <div class="sources-title">Sources</div>
+    <div id="sourcesList"></div>
+  </div>
+</div>
+
+<!-- ── Search card ── -->
+<div class="card" id="tab-search">
+  <div>
+    <label>Search query</label>
+    <input id="searchQuery" placeholder="hybrid search, pgvector..." onkeydown="if(event.key==='Enter') search()" />
+  </div>
+  <div style="display:flex;gap:12px;align-items:flex-end">
+    <div style="flex:1">
+      <label>Mode</label>
+      <select id="searchMode">
+        <option value="hybrid">Hybrid (vector + BM25)</option>
+        <option value="vector">Vector only</option>
+        <option value="bm25">BM25 only</option>
+      </select>
+    </div>
+    <button onclick="search()" id="searchBtn">Search</button>
+  </div>
+  <div class="status" id="searchStatus"></div>
+  <div id="searchResults"></div>
+</div>
+
+<script>
+  const API = '';  // same origin — FastAPI serves this file
+  let token = localStorage.getItem('rag_token');
+  let username = localStorage.getItem('rag_user');
+
+  // ── On load ────────────────────────────────────────────────────────────────
+  window.onload = () => {
+    if (token) showAuthBar();
+  };
+
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      const names = ['login','ingest','ask','search'];
+      t.classList.toggle('active', names[i] === name);
+    });
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  // ── Auth helpers ───────────────────────────────────────────────────────────
+  function showAuthBar() {
+    document.getElementById('authBar').style.display = 'flex';
+    document.getElementById('authUser').textContent = username || '';
+  }
+
+  function logout() {
+    token = null; username = null;
+    localStorage.removeItem('rag_token');
+    localStorage.removeItem('rag_user');
+    document.getElementById('authBar').style.display = 'none';
+    setStatus('loginStatus', 'Logged out.', 'info');
+    switchTab('login');
+  }
+
+  // ── Status helper ──────────────────────────────────────────────────────────
+  function setStatus(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  // ── Register ───────────────────────────────────────────────────────────────
+  async function register() {
+    const body = {
+      username: document.getElementById('loginUser').value.trim(),
+      password: document.getElementById('loginPass').value,
+    };
+    if (!body.username || !body.password) return setStatus('loginStatus', 'Fill in both fields.', 'err');
+
+    const res = await fetch(API + '/auth/register', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) setStatus('loginStatus', 'Registered! Now log in.', 'ok');
+    else setStatus('loginStatus', data.detail || 'Registration failed.', 'err');
+  }
+
+  // ── Login ──────────────────────────────────────────────────────────────────
+  async function login() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    if (!user || !pass) return setStatus('loginStatus', 'Fill in both fields.', 'err');
+
+    // OAuth2 form data (not JSON)
+    const form = new URLSearchParams({ username: user, password: pass });
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: form
+    });
+    const data = await res.json();
+    if (res.ok) {
+      token = data.access_token;
+      username = user;
+      localStorage.setItem('rag_token', token);
+      localStorage.setItem('rag_user', username);
+      setStatus('loginStatus', 'Logged in! Head to Ingest or Ask.', 'ok');
+      showAuthBar();
+    } else {
+      setStatus('loginStatus', data.detail || 'Login failed.', 'err');
+    }
+  }
+
+  // ── Ingest ─────────────────────────────────────────────────────────────────
+  async function ingest() {
+    if (!token) return setStatus('ingestStatus', 'Log in first.', 'err');
+    const text = document.getElementById('ingestText').value.trim();
+    const source_file = document.getElementById('ingestSource').value.trim() || 'document.txt';
+    if (!text) return setStatus('ingestStatus', 'Paste some text first.', 'err');
+
+    const btn = document.getElementById('ingestBtn');
+    btn.disabled = true; btn.textContent = 'Ingesting...';
+    setStatus('ingestStatus', 'Chunking, embedding and storing…', 'info');
+
+    const res = await fetch(API + '/rag/ingest', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + token},
+      body: JSON.stringify({ text, source_file })
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Ingest document';
+
+    if (res.ok) {
+      setStatus('ingestStatus',
+        `Stored ${data.chunks_stored} chunks · ${data.tokens_embedded} tokens · $${data.cost_usd.toFixed(5)}`,
+        'ok');
+    } else {
+      setStatus('ingestStatus', data.detail || 'Ingest failed.', 'err');
+    }
+  }
+
+  // ── Ask ────────────────────────────────────────────────────────────────────
+  async function ask() {
+    if (!token) return setStatus('askStatus', 'Log in first.', 'err');
+    const question = document.getElementById('askQuestion').value.trim();
+    if (!question) return setStatus('askStatus', 'Type a question first.', 'err');
+
+    const btn = document.getElementById('askBtn');
+    btn.disabled = true; btn.textContent = 'Thinking…';
+    setStatus('askStatus', 'Retrieving and generating answer…', 'info');
+    document.getElementById('answerBox').classList.remove('active');
+
+    const res = await fetch(API + '/rag/ask', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + token},
+      body: JSON.stringify({ question })
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Ask';
+
+    if (res.ok) {
+      document.getElementById('askStatus').className = 'status';
+      document.getElementById('answerText').textContent = data.answer;
+
+      const list = document.getElementById('sourcesList');
+      list.innerHTML = data.sources.map(s => `
+        <div class="source-item">
+          <div class="source-file">${s.source_file}</div>
+          ${s.section_header ? `<div class="source-header">${s.section_header}</div>` : ''}
+          <div class="source-preview">${s.chunk_preview}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('answerBox').classList.add('active');
+    } else {
+      setStatus('askStatus', data.detail || 'Ask failed.', 'err');
+    }
+  }
+
+  // ── Search ─────────────────────────────────────────────────────────────────
+  async function search() {
+    if (!token) return setStatus('searchStatus', 'Log in first.', 'err');
+    const query = document.getElementById('searchQuery').value.trim();
+    const mode  = document.getElementById('searchMode').value;
+    if (!query) return setStatus('searchStatus', 'Type a query first.', 'err');
+
+    const btn = document.getElementById('searchBtn');
+    btn.disabled = true; btn.textContent = 'Searching…';
+    setStatus('searchStatus', 'Running ' + mode + ' search…', 'info');
+    document.getElementById('searchResults').innerHTML = '';
+
+    const res = await fetch(API + '/rag/search', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + token},
+      body: JSON.stringify({ query, mode, top_k: 5 })
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Search';
+
+    if (res.ok) {
+      setStatus('searchStatus', `${data.results.length} results · mode: ${data.mode}`, 'ok');
+      document.getElementById('searchResults').innerHTML = data.results.map((r, i) => `
+        <div class="source-item" style="margin-top:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="source-file">[${i+1}] ${r.source_file}</span>
+            <span style="font-size:0.75rem;color:#64748b">score ${r.score}</span>
+          </div>
+          ${r.section_header ? `<div class="source-header">${r.section_header}</div>` : ''}
+          <div class="source-preview">${r.text}</div>
+        </div>
+      `).join('');
+    } else {
+      setStatus('searchStatus', data.detail || 'Search failed.', 'err');
+    }
+  }
+</script>
+</body>
+</html>

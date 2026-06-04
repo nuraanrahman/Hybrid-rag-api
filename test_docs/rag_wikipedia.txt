@@ -1,0 +1,67 @@
+Retrieval-Augmented Generation
+
+Retrieval-augmented generation (RAG) is a technique enabling large language models to retrieve and incorporate information from external data sources. With RAG, LLMs first consult specified documents before responding to user queries, supplementing their pre-existing training data with domain-specific or updated information.
+
+## How RAG Works
+
+RAG enhances LLMs by incorporating an information-retrieval mechanism that accesses data beyond the original training set. Rather than retraining models when new information becomes available, systems can simply augment the external knowledge base with updated information.
+
+The RAG process involves several key stages:
+
+1. Data Conversion: Information to be referenced is converted into LLM embeddings — numerical representations in vector space form — and stored in a vector database for retrieval.
+
+2. Document Retrieval: Given a user query, a document retriever selects the most relevant documents to augment the query.
+
+3. Prompt Integration: Retrieved information is fed into the LLM through prompt engineering of the user's original query.
+
+4. Response Generation: The LLM generates output based on both the query and retrieved documents.
+
+Some models incorporate additional steps like re-ranking retrieved information or fine-tuning to improve output quality.
+
+## Benefits
+
+RAG offers several advantages over traditional LLMs. It reduces AI hallucinations by grounding responses in factual sources. It also decreases the computational and financial costs associated with retraining models. Additionally, RAG allows LLMs to include sources in responses, enabling users to verify cited information and providing greater transparency.
+
+## Limitations and Challenges
+
+Despite its benefits, RAG has significant limitations:
+
+Hallucination Persistence: RAG does not completely prevent hallucinations. LLMs can still misinterpret context in retrieved sources or generate inaccurate statements even when pulling from factually correct materials.
+
+Contextual Misinterpretation: Models may extract statements from sources without understanding their context. For example, an LLM retrieved the phrase "Barack Hussein Obama: America's First Muslim President?" from an academic book's rhetorical title and generated a false claim about Obama being America's first Muslim president.
+
+RAG Poisoning: Systems may struggle when facing conflicting information or may combine details from multiple sources in misleading ways, merging outdated and current information incorrectly.
+
+Knowledge Limitations: LLMs may lack the ability to recognize when they have insufficient information to provide reliable responses and may generate answers despite uncertainty.
+
+## Applications
+
+RAG is used across various domains where responses must be grounded in external or frequently updated information:
+
+- Search engines and question-answering systems
+- Customer support chatbots and enterprise knowledge assistants
+- Content generation and recommendation systems
+- Retail, e-commerce, and manufacturing workflows
+- Healthcare applications, where it grounds outputs in medical knowledge sources (though challenges around evaluation and clinical reliability remain)
+
+## Technical Improvements
+
+Various enhancements can optimize RAG systems:
+
+Encoder Improvements: Methods focus on encoding text as dense or sparse vectors. Dense vectors are more compact and encode meaning, while sparse vectors encode word identity. Optimizations include using dot products for similarity scoring, approximate nearest neighbor searches for efficiency, and hybrid approaches combining both vector types.
+
+Retriever Enhancement: Techniques include pre-training retrievers with the Inverse Cloze Task, supervised optimization aligning retrieval with generator likelihood, and reranking to prioritize relevant documents.
+
+Language Model Redesign: By designing language models with retrievers in mind, smaller networks can achieve comparable performance to larger counterparts, though this requires training from scratch.
+
+Chunking Strategies: Data can be broken into vectors using fixed-length overlapping chunks, syntax-based chunks at sentence boundaries, or file format-based chunking that respects natural document structures.
+
+Hybrid Search: Systems can combine traditional text searches with vector database results to capture key facts that vector-only searches might miss.
+
+## Evaluation
+
+RAG systems are evaluated using benchmarks designed to test retrievability, retrieval accuracy, and generative quality. Popular evaluation resources include BEIR, a heterogeneous benchmark for zero-shot information retrieval, and Natural Questions, a large-scale question-answering dataset from Google Research.
+
+## Historical Context
+
+The term retrieval-augmented generation was introduced in a 2020 research paper describing the combination of a parametric language model with non-parametric external memory accessed through retrieval at inference time, establishing the foundation for this now widely-adopted technique.
